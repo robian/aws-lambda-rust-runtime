@@ -357,29 +357,29 @@ fn into_websocket_request(ag: ApiGatewayWebsocketProxyRequest) -> http::Request<
 fn into_vpc_lattice_v2_request(vl: VpcLatticeEventV2) -> http::Request<Body> {
     let http_method = vl.method;
     let host = vl.headers.get(http::header::HOST).and_then(|s| s.to_str().ok());
-    let raw_path = vl.path.unwrap_or_default();
+    let path = vl.path.unwrap_or_default();
 
-    let query_string_parameters = decode_query_map(vl.query_string_parameters);
-    let multi_value_query_string_parameters = QueryMap::default();
+    // Strip off query params if any
+    let raw_path = match path.find('?') {
+        Some(idx) => path.split_at(idx).0.into(),
+        None => path,
+    };
+
+    // query_string_parameters are always multi-value
+    let multi_value_query_string_parameters = vl.query_string_parameters;
 
     let builder = http::Request::builder()
         .uri(build_request_uri(
             &raw_path,
             &vl.headers,
             host,
-            Some((&multi_value_query_string_parameters, &query_string_parameters)),
+            Some((&multi_value_query_string_parameters, &QueryMap::default())),
         ))
         .extension(RawHttpPath(raw_path))
         // multi valued query string parameters are always a super
         // set of singly valued query string parameters,
         // when present, multi-valued query string parameters are preferred
-        .extension(QueryStringParameters(
-            if multi_value_query_string_parameters.is_empty() {
-                query_string_parameters
-            } else {
-                multi_value_query_string_parameters
-            },
-        ))
+        .extension(QueryStringParameters(multi_value_query_string_parameters))
         .extension(RequestContext::VpcLattice(vl.request_context));
 
     let mut headers = vl.headers;
@@ -1014,5 +1014,27 @@ mod tests {
         let req_context = req.request_context_ref().expect("Request is missing RequestContext");
         let authorizer = req_context.authorizer().expect("authorizer is missing");
         assert_eq!(Some("admin"), authorizer.fields.get("principalId").unwrap().as_str());
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "vpc_lattice")]
+    async fn test_axum_query_extractor_vpc_lattice() {
+        use axum_core::extract::FromRequestParts;
+        use axum_extra::extract::Query;
+        let input = include_str!("../../lambda-events/src/fixtures/example-vpc_lattice-lambda-target-request-get.json");
+        let request = from_str(input).expect("failed to parse request");
+        let (mut parts, _) = request.into_parts();
+
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Params {
+            multi: Vec<String>,
+            timestamp: Vec<String>,
+        }
+        struct State;
+
+        let query = Query::<Params>::from_request_parts(&mut parts, &State).await.unwrap();
+        assert_eq!(vec!["abc", "def"], query.0.multi);
+        assert_eq!(vec!["2024-07-26T11:44:24.113579+00:00"], query.0.timestamp);
     }
 }

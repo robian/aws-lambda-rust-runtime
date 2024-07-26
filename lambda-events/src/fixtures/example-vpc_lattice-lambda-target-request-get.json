@@ -17,10 +17,15 @@
     ]
   },
   "method": "GET",
-  "path": "/foo?foo=bar",
+  "path": "/timestamp=2024-07-26T11%3A44%3A24.113579%2B00%3A00&multi=def&multi=def",
+
   "queryStringParameters": {
-    "foo": [
-      "bar"
+    "multi": [
+      "abc",
+      "def"
+    ],
+    "timestamp": [
+      "2024-07-26T11:44:24.113579+00:00"
     ]
   },
   "requestContext": {
