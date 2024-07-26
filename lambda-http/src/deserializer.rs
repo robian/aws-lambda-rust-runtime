@@ -12,7 +12,7 @@ use aws_lambda_events::vpc_lattice::VpcLatticeEventV2;
 use serde::{de::Error, Deserialize};
 use serde_json::value::RawValue;
 
-const ERROR_CONTEXT: &str = "this function expects a JSON payload from Amazon API Gateway, Amazon Elastic Load Balancer, or AWS Lambda Function URLs, but the data doesn't match any of those services' events";
+const ERROR_CONTEXT: &str = "this function expects a JSON payload from Amazon API Gateway, Amazon Elastic Load Balancer, AWS Lambda Function URLs or AWS VPC Lattice but the data doesn't match any of those services' events";
 
 #[cfg(feature = "pass_through")]
 const PASS_THROUGH_ENABLED: bool = true;
