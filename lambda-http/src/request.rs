@@ -1028,13 +1028,13 @@ mod tests {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Params {
-            multi: Vec<String>,
-            timestamp: Vec<String>,
+            num: Vec<usize>,
+            start: Vec<String>,
         }
         struct State;
 
         let query = Query::<Params>::from_request_parts(&mut parts, &State).await.unwrap();
-        assert_eq!(vec!["abc", "def"], query.0.multi);
-        assert_eq!(vec!["2024-07-26T11:44:24.113579+00:00"], query.0.timestamp);
+        assert_eq!(vec![1], query.0.num);
+        assert_eq!(vec!["2024-07-20T18:18:13.432171+02:00"], query.0.start);
     }
 }

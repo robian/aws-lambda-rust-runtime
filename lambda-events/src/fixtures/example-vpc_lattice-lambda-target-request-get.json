@@ -17,15 +17,14 @@
     ]
   },
   "method": "GET",
-  "path": "/timestamp=2024-07-26T11%3A44%3A24.113579%2B00%3A00&multi=def&multi=def",
+  "path": "/DE5475C26D9C/counters?num=1&start=2024-07-20T18:18:13.432171+02:00",
 
   "queryStringParameters": {
-    "multi": [
-      "abc",
-      "def"
+    "num": [
+      "1"
     ],
-    "timestamp": [
-      "2024-07-26T11:44:24.113579+00:00"
+    "start": [
+      "2024-07-20T18:18:13.432171+02:00"
     ]
   },
   "requestContext": {
