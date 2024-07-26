@@ -1,0 +1,37 @@
+{
+  "headers": {
+    "accept": [
+      "*/*"
+    ],
+    "accept-encoding": [
+      "gzip, deflate"
+    ],
+    "host": [
+      "myhost-00000000000000000.0000000.vpc-lattice-svcs.eu-central-1.on.aws"
+    ],
+    "user-agent": [
+      "HTTPie/3.2.2"
+    ],
+    "x-forwarded-for": [
+      "10.0.7.35"
+    ]
+  },
+  "method": "GET",
+  "path": "/foo?foo=bar",
+  "queryStringParameters": {
+    "foo": [
+      "bar"
+    ]
+  },
+  "requestContext": {
+    "identity": {
+      "sourceVpcArn": "arn:aws:ec2:eu-central-1:000000000000:vpc/vpc-00000000000000000"
+    },
+    "region": "eu-central-1",
+    "serviceArn": "arn:aws:vpc-lattice:eu-central-1:000000000000:service/svc-00000000000000000",
+    "serviceNetworkArn": "arn:aws:vpc-lattice:eu-central-1:000000000000:servicenetwork/sn-00000000000000000",
+    "targetGroupArn": "arn:aws:vpc-lattice:eu-central-1:000000000000:targetgroup/tg-00000000000000000",
+    "timeEpoch": "1721977931574954"
+  },
+  "version": "2.0"
+}

@@ -16,11 +16,12 @@ categories = ["web-programming::http-server"]
 readme = "README.md"
 
 [features]
-default = ["apigw_rest", "apigw_http", "apigw_websockets", "alb", "tracing"]
+default = ["apigw_rest", "apigw_http", "apigw_websockets", "alb", "tracing", "vpc_lattice"]
 apigw_rest = []
 apigw_http = []
 apigw_websockets = []
 alb = []
+vpc_lattice = []
 pass_through = []
 tracing = ["lambda_runtime/tracing"] # enables access to the Tracing utilities
 opentelemetry = ["lambda_runtime/opentelemetry"] # enables access to the OpenTelemetry layers and utilities
@@ -52,7 +53,7 @@ url = "2.2"
 path = "../lambda-events"
 version = "0.15.0"
 default-features = false
-features = ["alb", "apigw"]
+features = ["alb", "apigw", "vpc_lattice"]
 
 [dev-dependencies]
 axum-core = "0.4.3"

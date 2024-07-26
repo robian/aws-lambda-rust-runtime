@@ -160,3 +160,7 @@ pub mod documentdb;
 /// AWS Lambda event definitions for EventBridge.
 #[cfg(feature = "eventbridge")]
 pub mod eventbridge;
+
+/// AWS Lambda event definitions for VPC Lattice.
+#[cfg(feature = "vpc_lattice")]
+pub mod vpc_lattice;

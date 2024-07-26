@@ -180,3 +180,7 @@ pub use event::documentdb;
 /// AWS Lambda event definitions for EventBridge.
 #[cfg(feature = "eventbridge")]
 pub use event::eventbridge;
+
+/// AWS Lambda event definitions for VPC Lattice.
+#[cfg(feature = "vpc_lattice")]
+pub use event::vpc_lattice;

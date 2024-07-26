@@ -12,7 +12,8 @@ use crate::ext::extensions::{PathParameters, StageVariables};
     feature = "apigw_rest",
     feature = "apigw_http",
     feature = "alb",
-    feature = "apigw_websockets"
+    feature = "apigw_websockets",
+    feature = "vpc_lattice"
 ))]
 use crate::ext::extensions::{QueryStringParameters, RawHttpPath};
 #[cfg(feature = "alb")]
@@ -25,6 +26,8 @@ use aws_lambda_events::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyRequestCon
 use aws_lambda_events::apigw::{ApiGatewayV2httpRequest, ApiGatewayV2httpRequestContext};
 #[cfg(feature = "apigw_websockets")]
 use aws_lambda_events::apigw::{ApiGatewayWebsocketProxyRequest, ApiGatewayWebsocketProxyRequestContext};
+#[cfg(feature = "vpc_lattice")]
+use aws_lambda_events::vpc_lattice::{VpcLatticeEventContext, VpcLatticeEventV2};
 use aws_lambda_events::{encodings::Body, query_map::QueryMap};
 use http::{header::HeaderName, HeaderMap, HeaderValue};
 
@@ -50,6 +53,8 @@ pub enum LambdaRequest {
     Alb(AlbTargetGroupRequest),
     #[cfg(feature = "apigw_websockets")]
     WebSocket(ApiGatewayWebsocketProxyRequest),
+    #[cfg(feature = "vpc_lattice")]
+    VpcLatticeV2(VpcLatticeEventV2),
     #[cfg(feature = "pass_through")]
     PassThrough(String),
 }
@@ -68,6 +73,8 @@ impl LambdaRequest {
             LambdaRequest::Alb { .. } => RequestOrigin::Alb,
             #[cfg(feature = "apigw_websockets")]
             LambdaRequest::WebSocket { .. } => RequestOrigin::WebSocket,
+            #[cfg(feature = "vpc_lattice")]
+            LambdaRequest::VpcLatticeV2 { .. } => RequestOrigin::WebSocket,
             #[cfg(feature = "pass_through")]
             LambdaRequest::PassThrough { .. } => RequestOrigin::PassThrough,
             #[cfg(not(any(
@@ -100,6 +107,8 @@ pub enum RequestOrigin {
     /// API Gateway WebSocket
     #[cfg(feature = "apigw_websockets")]
     WebSocket,
+    #[cfg(feature = "vpc_lattice")]
+    VpcLatticeV2,
     /// PassThrough request origin
     #[cfg(feature = "pass_through")]
     PassThrough,
@@ -344,6 +353,55 @@ fn into_websocket_request(ag: ApiGatewayWebsocketProxyRequest) -> http::Request<
     req
 }
 
+#[cfg(feature = "vpc_lattice")]
+fn into_vpc_lattice_v2_request(vl: VpcLatticeEventV2) -> http::Request<Body> {
+    let http_method = vl.method;
+    let host = vl.headers.get(http::header::HOST).and_then(|s| s.to_str().ok());
+    let raw_path = vl.path.unwrap_or_default();
+
+    let query_string_parameters = decode_query_map(vl.query_string_parameters);
+    let multi_value_query_string_parameters = QueryMap::default();
+
+    let builder = http::Request::builder()
+        .uri(build_request_uri(
+            &raw_path,
+            &vl.headers,
+            host,
+            Some((&multi_value_query_string_parameters, &query_string_parameters)),
+        ))
+        .extension(RawHttpPath(raw_path))
+        // multi valued query string parameters are always a super
+        // set of singly valued query string parameters,
+        // when present, multi-valued query string parameters are preferred
+        .extension(QueryStringParameters(
+            if multi_value_query_string_parameters.is_empty() {
+                query_string_parameters
+            } else {
+                multi_value_query_string_parameters
+            },
+        ))
+        .extension(RequestContext::VpcLattice(vl.request_context));
+
+    let mut headers = vl.headers;
+    update_xray_trace_id_header(&mut headers);
+
+    let base64 = vl.is_base64_encoded;
+
+    let mut req = builder
+        .body(
+            vl.body
+                .as_deref()
+                .map_or_else(Body::default, |b| Body::from_maybe_encoded(base64, b)),
+        )
+        .expect("failed to build request");
+
+    // no builder method that sets headers in batch
+    let _ = std::mem::replace(req.headers_mut(), headers);
+    let _ = std::mem::replace(req.method_mut(), http_method);
+
+    req
+}
+
 #[cfg(feature = "pass_through")]
 fn into_pass_through_request(data: String) -> http::Request<Body> {
     let mut builder = http::Request::builder();
@@ -401,6 +459,9 @@ pub enum RequestContext {
     /// WebSocket request context
     #[cfg(feature = "apigw_websockets")]
     WebSocket(ApiGatewayWebsocketProxyRequestContext),
+    /// VPC Lattice request context
+    #[cfg(feature = "vpc_lattice")]
+    VpcLattice(VpcLatticeEventContext),
     /// Custom request context
     #[cfg(feature = "pass_through")]
     PassThrough,
@@ -418,6 +479,8 @@ impl From<LambdaRequest> for http::Request<Body> {
             LambdaRequest::Alb(alb) => into_alb_request(alb),
             #[cfg(feature = "apigw_websockets")]
             LambdaRequest::WebSocket(ag) => into_websocket_request(ag),
+            #[cfg(feature = "vpc_lattice")]
+            LambdaRequest::VpcLatticeV2(vl) => into_vpc_lattice_v2_request(vl),
             #[cfg(feature = "pass_through")]
             LambdaRequest::PassThrough(data) => into_pass_through_request(data),
         }

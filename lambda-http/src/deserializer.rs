@@ -7,6 +7,8 @@ use aws_lambda_events::apigw::ApiGatewayProxyRequest;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 #[cfg(feature = "apigw_websockets")]
 use aws_lambda_events::apigw::ApiGatewayWebsocketProxyRequest;
+#[cfg(feature = "vpc_lattice")]
+use aws_lambda_events::vpc_lattice::VpcLatticeEventV2;
 use serde::{de::Error, Deserialize};
 use serde_json::value::RawValue;
 
@@ -38,6 +40,10 @@ impl<'de> Deserialize<'de> for LambdaRequest {
         #[cfg(feature = "apigw_websockets")]
         if let Ok(res) = serde_json::from_str::<ApiGatewayWebsocketProxyRequest>(data) {
             return Ok(LambdaRequest::WebSocket(res));
+        }
+        #[cfg(feature = "vpc_lattice")]
+        if let Ok(res) = serde_json::from_str::<VpcLatticeEventV2>(data) {
+            return Ok(LambdaRequest::VpcLatticeV2(res));
         }
         #[cfg(feature = "pass_through")]
         if PASS_THROUGH_ENABLED {
@@ -131,6 +137,20 @@ mod tests {
         match req {
             LambdaRequest::WebSocket(req) => {
                 assert_eq!("CONNECT", req.request_context.event_type.unwrap());
+            }
+            other => panic!("unexpected request variant: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_deserialize_vpc_lattice_v2() {
+        let data =
+            include_bytes!("../../lambda-events/src/fixtures/example-vpc_lattice-lambda-target-request-get.json");
+
+        let req: LambdaRequest = serde_json::from_slice(data).expect("failed to deserialize vpc lattice v2 data");
+        match req {
+            LambdaRequest::VpcLatticeV2(req) => {
+                assert_eq!("eu-central-1", req.request_context.region);
             }
             other => panic!("unexpected request variant: {:?}", other),
         }

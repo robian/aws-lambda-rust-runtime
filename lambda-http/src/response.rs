@@ -8,6 +8,8 @@ use aws_lambda_events::apigw::ApiGatewayProxyResponse;
 #[cfg(feature = "apigw_http")]
 use aws_lambda_events::apigw::ApiGatewayV2httpResponse;
 use aws_lambda_events::encodings::Body;
+#[cfg(feature = "vpc_lattice")]
+use aws_lambda_events::vpc_lattice::VpcLatticeResponse;
 use encoding_rs::Encoding;
 use http::{
     header::{CONTENT_ENCODING, CONTENT_TYPE},
@@ -50,6 +52,8 @@ pub enum LambdaResponse {
     ApiGatewayV2(ApiGatewayV2httpResponse),
     #[cfg(feature = "alb")]
     Alb(AlbTargetGroupResponse),
+    #[cfg(feature = "vpc_lattice")]
+    VpcLattice(VpcLatticeResponse),
     #[cfg(feature = "pass_through")]
     PassThrough(serde_json::Value),
 }
@@ -128,6 +132,18 @@ impl LambdaResponse {
                 // "multi_value_headers" fields together resulting in duplicate response headers.
                 headers: HeaderMap::new(),
                 multi_value_headers: headers,
+            }),
+            #[cfg(feature = "vpc_lattice")]
+            RequestOrigin::VpcLatticeV2 => LambdaResponse::VpcLattice(VpcLatticeResponse {
+                body,
+                status_code: status_code as i64,
+                is_base64_encoded,
+                headers: headers.clone(),
+                status_description: Some(format!(
+                    "{} {}",
+                    status_code,
+                    parts.status.canonical_reason().unwrap_or_default()
+                )),
             }),
             #[cfg(feature = "pass_through")]
             RequestOrigin::PassThrough => {
